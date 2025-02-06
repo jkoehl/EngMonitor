@@ -1,0 +1,11 @@
+{
+    "plugin_version": "0.1",
+    "enabled": true,
+    "scripts": [
+      {
+        "name": "main",
+        "file": "data/modules/main.lua"
+      }
+    ],
+    "modules": []
+  }
