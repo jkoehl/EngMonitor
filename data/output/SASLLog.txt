@@ -10,7 +10,6 @@
 [ENGMONITOR ERROR]: [STACK]:| ...NG ANALOG - G5/plugins/EngMonitor/data/init/initMain.lua:260 in function <c>
 [ENGMONITOR ERROR]: [STACK]:| ...NG ANALOG - G5/plugins/EngMonitor/data/init/initMain.lua:1131 in function <?>
 [ENGMONITOR INFO]: [LUA]: loading	instrument
-[ENGMONITOR INFO]: [LUA]: Font loaded successfully: 2
 [ENGMONITOR INFO]: [LUA]: loading	rectangle
 [ENGMONITOR INFO]: Scripts loading time: 0.0017
 [ENGMONITOR INFO]: Module loaded
@@ -19,5 +18,3 @@
 [ENGMONITOR WARN]: Enable/disable interactivity option explicitly (sasl.options.setInteractivity)
 [ENGMONITOR INFO]: Initializing modules...
 [ENGMONITOR INFO]: Modules initialization done
-[ENGMONITOR INFO]: Disabling...
-[ENGMONITOR INFO]: SASL plugin stopped...
