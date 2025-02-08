@@ -11,11 +11,14 @@
 [ENGMONITOR ERROR]: [STACK]:| ...NG ANALOG - G5/plugins/EngMonitor/data/init/initMain.lua:1131 in function <?>
 [ENGMONITOR INFO]: [LUA]: loading	instrument
 [ENGMONITOR INFO]: [LUA]: loading	line_gauge
+[ENGMONITOR INFO]: [LUA]: loading	round_gauge
 [ENGMONITOR INFO]: [LUA]: loading	rectangle
-[ENGMONITOR INFO]: Scripts loading time: 0.0044
+[ENGMONITOR INFO]: Scripts loading time: 0.0047
 [ENGMONITOR INFO]: Module loaded
 [ENGMONITOR WARN]: Enable/disable aircraft 3D panel usage explicitly (sasl.options.setAircraftPanelRendering)
 [ENGMONITOR WARN]: Enable/disable 3D rendering explicitly (sasl.options.set3DRendering)
 [ENGMONITOR WARN]: Enable/disable interactivity option explicitly (sasl.options.setInteractivity)
 [ENGMONITOR INFO]: Initializing modules...
 [ENGMONITOR INFO]: Modules initialization done
+[ENGMONITOR INFO]: Disabling...
+[ENGMONITOR INFO]: SASL plugin stopped...

@@ -6,7 +6,7 @@ size = { 2048, 2048 }
 
 newWindow = contextWindow { 
     name = ’Window’;
-    position = { 50, 50, 600, 600 };
+    position = { 50, 50, 640, 640 };
     noBackground = false; 
     minimumSize = { 300, 300 };
     maximumSize = { 1200, 1200 };
@@ -14,7 +14,7 @@ newWindow = contextWindow {
     visible = true;
     components = { 
         instrument {
-            position = { 0, 0, 400, 300 };
+            position = { 0, 0, 400, 500 };
         }
     }
 }
