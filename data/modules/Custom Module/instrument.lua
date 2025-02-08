@@ -14,22 +14,21 @@ local numCylinders = 4  -- The screenshot seems to show 4 cylinders
 -- DATAREFS
 ------------------------------------------------------------
 local mpDR        = globalProperty("sim/flightmodel/engine/ENGN_MPR[0]", 0.0)       
-local rpmDR       = globalProperty("sim/flightmodel/engine/ENGN_propmode[0]", 0.0)  
+local rpmDR       = globalProperty("sim/cockpit2/engine/indicators/engine_speed_rpm[0]", 0.0)  
 local egtCylDR    = globalProperty("sim/cockpit2/engine/indicators/EGT_CYL_deg_C")   
 local chtCylDR    = globalProperty("sim/cockpit2/engine/indicators/CHT_CYL_deg_C")   
 local oilTempDR   = globalProperty("sim/cockpit2/engine/indicators/oil_temperature_deg_C[0]", 0.0)  -- In °F
+local oilPressDR  = globalProperty("sim/cockpit2/engine/indicators/oil_pressure_psi[0]", 0.0)
 local fuelFlowDR  = globalProperty("sim/cockpit2/engine/indicators/fuel_flow_kg_sec[0]", 0.0)
 local voltsDR     = globalProperty("sim/cockpit2/electrical/bus_volts[0]", 0.0)
 local oatDR       = globalProperty("sim/cockpit2/temperature/outside_air_temp_degf", 0.0)
 
--- Additional references for “REM,” “Oil Press,” etc. as needed:
-local fuelRemDR   = createGlobalPropertyf("my/custom/fuel_remaining", 58.9) 
-local oilPressDR  = createGlobalPropertyf("my/custom/oil_press_psi", 70.0)
+local fuelFlowGPH = createProperty("fuelFlowGPH")
+local fuelRemDR   = createGlobalPropertyf("my/custom/fuel_remaining", 0) 
 
 ------------------------------------------------------------
 -- INTERNAL VARIABLES
 ------------------------------------------------------------
-local manifoldPressure = 0
 local rpm = 0
 local oilTemp = 0
 local oilPress = 0
@@ -46,7 +45,7 @@ local maxCHT = 450
 
 -- Define subcomponents
 components = {
-    gauge_component {
+    line_gauge {
         position = {320, 600, 150, 60},
         dataref = oilTempDR,
         minValue = 75,
@@ -55,7 +54,7 @@ components = {
         dangerMax = 245,
         nameAbbrv = "OIL-T"
     },
-    gauge_component {
+    line_gauge {
         position = {320, 520, 150, 60},
         dataref = oilPressDR,
         minValue = 0,
@@ -64,16 +63,16 @@ components = {
         dangerMax = 115,
         nameAbbrv = "OIL-P"
     },
-    gauge_component {
+    line_gauge {
         position = {320, 440, 150, 60},
-        dataref = fuelFlowDR,
+        dataref = fuelFlowGPH,
         minValue = 0,
         maxValue = 20,
         dangerMin = 0,
         dangerMax = 20,
         nameAbbrv = "GPH"
     },
-    gauge_component {
+    line_gauge {   
         position = {320, 360, 150, 60},
         dataref = fuelRemDR,
         minValue = 0,
@@ -82,7 +81,7 @@ components = {
         dangerMax = 60,
         nameAbbrv = "FUEL"
     },
-    gauge_component {
+    line_gauge {
         position = {320, 280, 150, 60},
         dataref = oatDR,
         minValue = -50,
@@ -91,7 +90,7 @@ components = {
         dangerMax = 50,
         nameAbbrv = "OAT"
     },
-    gauge_component {
+    line_gauge {
         position = {320, 200, 150, 60},
         dataref = voltsDR,
         minValue = 0,
@@ -113,11 +112,9 @@ end
 -- UPDATE
 ------------------------------------------------------------
 function update()
-    manifoldPressure = get(mpDR) or 0
     rpm = get(rpmDR) or 0
     oilTemp = get(oilTempDR) or 0
     oilPress = get(oilPressDR) or 0
-    fuelFlow = get(fuelFlowDR) or 0
     volts = get(voltsDR) or 0
     oat = get(oatDR) or 0
     fuelRem = get(fuelRemDR) or 0
@@ -127,12 +124,106 @@ function update()
         chtCylValues[i] = get(chtCylDR, i) or 0
     end
 
+    set(fuelFlowGPH, get(fuelFlowDR) * 1320.0)
     updateAll(components)
 end
 
 ------------------------------------------------------------
 -- DRAW
 ------------------------------------------------------------
+
+-- Function to draw the RPM gauge
+local function drawRPMGauge()
+    local gaugeCenterX = 160
+    local gaugeCenterY = size[2] - 160   -- 160 px down from top
+    local gaugeRadius  = 120
+    
+    -- Adjust the arc to be a half-circle
+    local startAngle = 0  -- Start at the top
+    local endAngle = 180     -- End at the bottom
+    sasl.gl.drawArc(gaugeCenterX, gaugeCenterY, gaugeRadius - 10, gaugeRadius, startAngle, endAngle - startAngle, {0, 1, 0, 1})
+
+    -- We'll define a function to get the angle for a given RPM:
+    local function rpmToAngle(rpmVal)
+        -- Suppose we map 0 RPM = 180° and 2700 RPM = 0° (i.e., 270 degrees total)
+        local fraction = rpmVal / 2700
+        local angle = 180 - fraction * 270
+        return angle
+    end
+    
+    -- Draw the small white triangle needle on the outer edge
+    local currentRPM = rpm
+    local needleAngle = rpmToAngle(currentRPM)
+    local needleLength = 10
+    local needleBaseWidth = 5
+    
+    local needleTipX = gaugeCenterX + (gaugeRadius - needleLength) * math.cos(math.rad(needleAngle))
+    local needleTipY = gaugeCenterY + (gaugeRadius - needleLength) * math.sin(math.rad(needleAngle))
+    
+    local needleBaseLeftX = gaugeCenterX + (gaugeRadius + needleLength) * math.cos(math.rad(needleAngle + needleBaseWidth))
+    local needleBaseLeftY = gaugeCenterY + (gaugeRadius + needleLength) * math.sin(math.rad(needleAngle + needleBaseWidth))
+    
+    local needleBaseRightX = gaugeCenterX + (gaugeRadius + needleLength) * math.cos(math.rad(needleAngle - needleBaseWidth))
+    local needleBaseRightY = gaugeCenterY + (gaugeRadius + needleLength) * math.sin(math.rad(needleAngle - needleBaseWidth))
+    
+    -- Draw black outline for the RPM needle
+    local outlineOffset = 2
+    local outlineTipX = gaugeCenterX + (gaugeRadius - needleLength - outlineOffset) * math.cos(math.rad(needleAngle))
+    local outlineTipY = gaugeCenterY + (gaugeRadius - needleLength - outlineOffset) * math.sin(math.rad(needleAngle))
+    
+    local outlineBaseLeftX = gaugeCenterX + (gaugeRadius + needleLength + outlineOffset) * math.cos(math.rad(needleAngle + needleBaseWidth))
+    local outlineBaseLeftY = gaugeCenterY + (gaugeRadius + needleLength + outlineOffset) * math.sin(math.rad(needleAngle + needleBaseWidth))
+    
+    local outlineBaseRightX = gaugeCenterX + (gaugeRadius + needleLength + outlineOffset) * math.cos(math.rad(needleAngle - needleBaseWidth))
+    local outlineBaseRightY = gaugeCenterY + (gaugeRadius + needleLength + outlineOffset) * math.sin(math.rad(needleAngle - needleBaseWidth))
+    
+    sasl.gl.drawTriangle(outlineTipX, outlineTipY, outlineBaseLeftX, outlineBaseLeftY, outlineBaseRightX, outlineBaseRightY, {0, 0, 0, 1})
+    
+    -- RPM needle
+    sasl.gl.drawTriangle(needleTipX, needleTipY, needleBaseLeftX, needleBaseLeftY, needleBaseRightX, needleBaseRightY, {1, 1, 1, 1})
+    
+    -- Draw hash marks around the RPM gauge
+    local numMajorTicks = 10
+    local numMinorTicks = 20
+    local majorTickLength = 20
+    local minorTickLength = 15
+    
+    for i = 0, numMajorTicks do
+        local angle = 180 - (i * 180 / numMajorTicks)
+        local startX = gaugeCenterX + (gaugeRadius - majorTickLength) * math.cos(math.rad(angle))
+        local startY = gaugeCenterY + (gaugeRadius - majorTickLength) * math.sin(math.rad(angle))
+        local endX = gaugeCenterX + gaugeRadius * math.cos(math.rad(angle))
+        local endY = gaugeCenterY + gaugeRadius * math.sin(math.rad(angle))
+        sasl.gl.drawLine(startX, startY, endX, endY, {1, 1, 1, 1})
+    end
+    
+    for i = 0, numMinorTicks do
+        local angle = 180 - (i * 180 / numMinorTicks)
+        local startX = gaugeCenterX + (gaugeRadius - minorTickLength) * math.cos(math.rad(angle))
+        local startY = gaugeCenterY + (gaugeRadius - minorTickLength) * math.sin(math.rad(angle))
+        local endX = gaugeCenterX + gaugeRadius * math.cos(math.rad(angle))
+        local endY = gaugeCenterY + gaugeRadius * math.sin(math.rad(angle))
+        sasl.gl.drawLine(startX, startY, endX, endY, {1, 1, 1, 1})
+    end
+    
+    -- Draw big text of actual RPM in center with an RPM label above it
+    sasl.gl.drawText(
+        myFontId,
+        gaugeCenterX,
+        gaugeCenterY + 65,
+        "RPM",
+        30, true, false, TEXT_ALIGN_CENTER,
+        {1,1,1,1}
+    )
+    sasl.gl.drawText(
+        myFontId,
+        gaugeCenterX,
+        gaugeCenterY + 10,
+        string.format("%.0f", rpm),
+        48, true, false, TEXT_ALIGN_CENTER,
+        {1,1,1,1}
+    )
+end
 
 function draw()
     ----------------------------------
@@ -143,71 +234,8 @@ function draw()
     ----------------------------------
     -- 2) Large Round Gauge for RPM/MAP
     ----------------------------------
-    local gaugeCenterX = 160
-    local gaugeCenterY = size[2] - 160   -- 160 px down from top
-    local gaugeRadius  = 140
+    drawRPMGauge()
     
-    -- Draw outer circle:
-    sasl.gl.drawCircle(gaugeCenterX, gaugeCenterY, gaugeRadius, false, {0,1,0,1})
-    
-    -- Optionally draw a green arc from, say, 0 to 2700 RPM:
-    -- We'll define a function to get the angle for a given RPM:
-    local function rpmToAngle(rpmVal)
-        -- Suppose we map 0 RPM = -135° and 2700 RPM = +135° (i.e., 270 degrees total)
-        local fraction = rpmVal / 2700
-        local angle = -135 + fraction * 270
-        return angle
-    end
-    
-    -- We can draw the arc for normal RPM range:
-    local startAngle = rpmToAngle(0)
-    local endAngle   = rpmToAngle(2700)
-    sasl.gl.drawArc(gaugeCenterX, gaugeCenterY, gaugeRadius - 5, gaugeRadius, startAngle, endAngle - startAngle, {0, 1, 0, 1})
-    
-    -- Draw the redline area above 2700 if desired (example only):
-    -- e.g. if max is 2700, we skip that. If you had 2800 or 3000, you could do:
-    -- sasl.gl.drawArc(...)
-
-    -- Needle for current RPM
-    local currentAngle = math.rad(rpmToAngle(rpm))
-    local needleLength = gaugeRadius - 20
-    local needleX = gaugeCenterX + needleLength * math.cos(currentAngle)
-    local needleY = gaugeCenterY + needleLength * math.sin(currentAngle)
-    sasl.gl.drawLine(gaugeCenterX, gaugeCenterY, needleX, needleY, {1,1,1,1})
-
-    -- Draw big text of actual RPM in center
-    sasl.gl.drawText(
-        myFontId,
-        gaugeCenterX,
-        gaugeCenterY + 10,
-        string.format("%.0f", rpm),
-        24, true, false, TEXT_ALIGN_CENTER,
-        {1,1,1,1}
-    )
-    
-    -- Underneath that, draw MAP
-    sasl.gl.drawText(
-        myFontId,
-        gaugeCenterX,
-        gaugeCenterY - 20,
-        string.format("%.1f\"", manifoldPressure),
-        20, true, false, TEXT_ALIGN_CENTER,
-        {1,1,1,1}
-    )
-    
-    ----------------------------------
-    -- 3) % HP readout near the gauge
-    ----------------------------------
-    local pctHP = computePercentPower(manifoldPressure, rpm)
-    sasl.gl.drawText(
-        myFontId,
-        gaugeCenterX, 
-        gaugeCenterY - 55,
-        string.format("%2.0f %% HP", pctHP),
-        20, true, false, TEXT_ALIGN_CENTER,
-        {1,1,1,1}
-    )
-
     ----------------------------------
     -- 4) EGT/CHT Bar Graph region
     ----------------------------------
