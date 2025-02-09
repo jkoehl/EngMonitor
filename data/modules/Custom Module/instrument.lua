@@ -61,17 +61,17 @@ components = {
         minValue = 0,
         maxValue = 115,
         dangerMin = 20,
-        dangerMax = 115,
+        dangerMax = 110,
         nameAbbrv = "OIL-P",
         valueFormat = "%.0f"
     },
     line_gauge {
         position = {290, 355, 100, 45},
         dataref = voltsDR,
-        minValue = 0,
-        maxValue = 30,
-        dangerMin = 0,
-        dangerMax = 30,
+        minValue = 20,
+        maxValue = 32,
+        dangerMin = 24,
+        dangerMax = 28,
         nameAbbrv = "VOLTS",
         valueFormat = "%.1f"
     },
@@ -90,7 +90,7 @@ components = {
         dataref = fuelRemDR,
         minValue = 0,
         maxValue = 60,
-        dangerMin = 0,
+        dangerMin = 10,
         dangerMax = 60,
         nameAbbrv = "REM",
         valueFormat = "%.1f"
@@ -135,6 +135,22 @@ function update()
     updateAll(components)
 end
 
+function drawDottedLine(x1, y1, x2, y2, color)
+    local step = 5  -- Length of each dot
+    local gap = 3   -- Gap between dots
+    local length = math.sqrt((x2 - x1)^2 + (y2 - y1)^2)
+    local dx = (x2 - x1) / length
+    local dy = (y2 - y1) / length
+
+    for i = 0, length, step + gap do
+        local startX = x1 + i * dx
+        local startY = y1 + i * dy
+        local endX = startX + step * dx
+        local endY = startY + step * dy
+        sasl.gl.drawLine(startX, startY, endX, endY, color)
+    end
+end
+
 function draw()
     ----------------------------------
     -- 1) Background
@@ -142,12 +158,32 @@ function draw()
     sasl.gl.drawRectangle(0, 0, get(position)[3], get(position)[4], {0, 0, 0, 1})
     
     ----------------------------------
+    -- 3) Range Indicator
+    ----------------------------------
+    local lowRangeValue = 170
+    local highRangeValue = 450
+    local rangeX = 35  -- Position to the left of the bars
+    local rangeY = 100
+    local rangeHeight = 80  -- Align with CHT bar height
+    local rangeColor = {0, 1, 0, 1}
+    local dangerColor = {1, 0, 0, 1}
+    
+    -- Draw the range indicator line
+    sasl.gl.drawRectangle(rangeX, rangeY, 5, rangeHeight, rangeColor)
+    sasl.gl.drawRectangle(rangeX, rangeY + (rangeHeight * (highRangeValue / maxCHT)), 5, rangeHeight * 0.1, dangerColor)
+    
+    -- Add range labels
+    sasl.gl.drawText(myFontId, rangeX - 10, rangeY + rangeHeight - 10, tostring(highRangeValue), 10, false, false, TEXT_ALIGN_RIGHT, rangeColor)
+    sasl.gl.drawText(myFontId, rangeX - 10, rangeY, tostring(lowRangeValue), 10, false, false, TEXT_ALIGN_RIGHT, rangeColor)
+
+    ----------------------------------
     -- 4) EGT/CHT Bar Graph region
     ----------------------------------
-    local barsX     = 0
+    local barsX     = 30
     local barsY     = 100
     local barsWidth = 200
     local barsHeight = 200  -- portion in the lower/middle
+    local labelsXOffset = 100
     
     -- We can place the EGT and CHT numbers above each bar:
     local colWidth = barsWidth / numCylinders
@@ -186,7 +222,14 @@ function draw()
         local egtColor = {0.0, 0.5, 1.0, 1}  -- Specific blue color for EGT
         local chtColorNormal = {0.0, 1.0, 0.0, 1}  -- Green for normal CHT
         local chtColorHigh = {1.0, 0.0, 0.0, 1}  -- Red for high CHT
-        
+
+        -- Draw white line from bottom of graph to where the EGT and CHT labels start
+        drawDottedLine(cx + 1, barsY, cx + 1, barsY + chtBarH + labelsXOffset - 5, {1, 1, 1, 1})
+
+        -- Calculate position for the red line
+        local highRangeY = barsY + (highRangeValue / maxCHT) * 80
+        sasl.gl.drawLine(cx + 2, highRangeY, cx + colWidth * 0.5, highRangeY, {1, 0, 0, 1})
+
         -- Draw segmented EGT bar
         local numSegments = math.floor(egtBarH / segmentHeight)
         for j = 0, numSegments - 1 do
@@ -202,19 +245,14 @@ function draw()
             sasl.gl.drawRectangle(cx + 2, barsY + j * segmentHeight, 8, segmentHeight - 2, chtColor)
         end
         
-        -- Cylinder EGT label above (blue text)
-        sasl.gl.drawText(myFontId, cx, barsY + egtBarH + 5, string.format("%.0f", egtVal), 14, true, false, TEXT_ALIGN_CENTER, {0.5,0.7,1,1})
+        -- Cylinder EGT label directly above CHT (blue text)
+        sasl.gl.drawText(myFontId, cx, barsY + chtBarH + labelsXOffset + 20, string.format("%.0f", egtVal), 14, true, false, TEXT_ALIGN_CENTER, egtColor)
         
-        -- Cylinder CHT label below (white text)
-        sasl.gl.drawText(myFontId, cx + 6, barsY + chtBarH + 5, string.format("%.0f", chtVal), 10, true, false, TEXT_ALIGN_LEFT, {1,1,1,1})
+        -- Cylinder CHT label below EGT (white text)
+        sasl.gl.drawText(myFontId, cx, barsY + chtBarH + labelsXOffset, string.format("%.0f", chtVal), 14, true, false, TEXT_ALIGN_CENTER, chtColor)
         
         -- Cylinder index near bottom
         sasl.gl.drawText(myFontId, cx, barsY - 15, tostring(i), 14, true, false, TEXT_ALIGN_CENTER, {1,1,1,1})
-        
-        -- Optional highlight for highest EGT
-        if i == highestEgtIndex then
-            sasl.gl.drawWideLine(cx - 15, barsY + egtBarH + 2, cx + 15, barsY + egtBarH + 2, 2, {1, 1, 0, 1})
-        end
     end
     
     ----------------------------------
@@ -240,3 +278,4 @@ function draw()
 
     drawAll(components)
 end
+

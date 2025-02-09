@@ -12,6 +12,13 @@ defineProperty("dangerMax", 2700)
 defineProperty("nameAbbrv", "")
 defineProperty("valueFormat", "%.2f")
 
+-- We'll define a function to get the angle for a given value:
+local function valueToAngle(value)
+    local fraction = value / get(maxValue)
+    local angle = 180 - fraction * 180
+    return angle
+end
+
 -- Function to draw the round gauge
 function draw()
     local gaugeRadius  = get(position)[3] / 2
@@ -22,26 +29,23 @@ function draw()
     -- Adjust the arc to be a half-circle
     local startAngle = 0  -- Start at the top
     local endAngle = 180     -- End at the bottom
-    sasl.gl.drawArc(gaugeCenterX, gaugeCenterY, gaugeRadius - radiusThickness, gaugeRadius, startAngle, endAngle - startAngle, {0, 1, 0, 1})
-
-    -- We'll define a function to get the angle for a given RPM:
-    local function rpmToAngle(rpmVal)
-        local fraction = rpmVal / get(maxValue)
-        local angle = 180 - fraction * 180
-        return angle
-    end
     
     -- Draw the danger zone arc in red for the min and max danger values
-    local dangerMaxStartAngle = rpmToAngle(get(dangerMax))
-    local dangerMaxEndAngle = rpmToAngle(get(maxValue))
+    local dangerMaxStartAngle = valueToAngle(get(dangerMax))
+    local dangerMaxEndAngle = valueToAngle(get(maxValue))
     sasl.gl.drawArc(gaugeCenterX, gaugeCenterY, gaugeRadius - radiusThickness, gaugeRadius, dangerMaxStartAngle, dangerMaxEndAngle - dangerMaxStartAngle, {1, 0, 0, 1})
-    local dangerMinStartAngle = rpmToAngle(get(dangerMin))
-    local dangerMinEndAngle = rpmToAngle(get(minValue))
+    local dangerMinStartAngle = valueToAngle(get(dangerMin))
+    local dangerMinEndAngle = valueToAngle(get(minValue))
     sasl.gl.drawArc(gaugeCenterX, gaugeCenterY, gaugeRadius - radiusThickness, gaugeRadius, dangerMinStartAngle, dangerMinEndAngle - dangerMinStartAngle, {1, 0, 0, 1})
+
+    -- Draw the safe zone arc in green after the dangerMax angle
+    local safeZoneStartAngle = dangerMaxStartAngle
+    local safeZoneEndAngle = endAngle
+    sasl.gl.drawArc(gaugeCenterX, gaugeCenterY, gaugeRadius - radiusThickness, gaugeRadius, safeZoneStartAngle, safeZoneEndAngle - safeZoneStartAngle, {0, 1, 0, 1})
 
     -- Draw the small white triangle needle on the outer edge
     local currentRPM = currentValue
-    local needleAngle = rpmToAngle(currentRPM)
+    local needleAngle = valueToAngle(currentRPM)
     local needleLength = 10
     local needleBaseWidth = 5
     
@@ -75,9 +79,13 @@ function draw()
     local numMinorTicks = 20
     local majorTickLength = 20
     local minorTickLength = 15
+    local dangerMaxAngle = valueToAngle(get(dangerMax))
     
     for i = 0, numMajorTicks do
         local angle = 180 - (i * 180 / numMajorTicks)
+        if angle < dangerMaxAngle then
+            break
+        end
         local startX = gaugeCenterX + (gaugeRadius - majorTickLength) * math.cos(math.rad(angle))
         local startY = gaugeCenterY + (gaugeRadius - majorTickLength) * math.sin(math.rad(angle))
         local endX = gaugeCenterX + gaugeRadius * math.cos(math.rad(angle))
@@ -87,6 +95,9 @@ function draw()
     
     for i = 0, numMinorTicks do
         local angle = 180 - (i * 180 / numMinorTicks)
+        if angle < dangerMaxAngle then
+            break
+        end
         local startX = gaugeCenterX + (gaugeRadius - minorTickLength) * math.cos(math.rad(angle))
         local startY = gaugeCenterY + (gaugeRadius - minorTickLength) * math.sin(math.rad(angle))
         local endX = gaugeCenterX + gaugeRadius * math.cos(math.rad(angle))
@@ -94,6 +105,21 @@ function draw()
         sasl.gl.drawWideLine(startX, startY, endX, endY, 2, {1, 1, 1, 1})
     end
     
+    -- Draw a red line at the dangerMax position
+    local dangerMaxAngle = valueToAngle(get(dangerMax))
+    local lineLength = 15  -- Length of the line outside the arc
+    local lineStartX = gaugeCenterX + (gaugeRadius) * math.cos(math.rad(dangerMaxAngle))
+    local lineStartY = gaugeCenterY + (gaugeRadius) * math.sin(math.rad(dangerMaxAngle))
+    local lineEndX = gaugeCenterX + (gaugeRadius + lineLength) * math.cos(math.rad(dangerMaxAngle))
+    local lineEndY = gaugeCenterY + (gaugeRadius + lineLength) * math.sin(math.rad(dangerMaxAngle))
+    sasl.gl.drawLine(lineStartX, lineStartY, lineEndX, lineEndY, {1, 0, 0, 1})
+
+    -- Draw text displaying the dangerMax value
+    local textOffset = 10  -- Offset for the text from the end of the line
+    local textX = lineEndX + textOffset * 2 * math.cos(math.rad(dangerMaxAngle))
+    local textY = lineEndY - textOffset * math.sin(math.rad(dangerMaxAngle))
+    sasl.gl.drawText(myFontId, textX, textY, string.format("%.0f", get(dangerMax)), 18, false, false, TEXT_ALIGN_CENTER, {1, 0, 0, 1})
+
     -- Draw big text of actual RPM in center with an RPM label above it
     sasl.gl.drawText(
         myFontId,

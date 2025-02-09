@@ -6,7 +6,8 @@
 [ENGMONITOR INFO]: [LUA]: loading	instrument
 [ENGMONITOR INFO]: [LUA]: loading	line_gauge
 [ENGMONITOR INFO]: [LUA]: loading	round_gauge
-[ENGMONITOR INFO]: Scripts loading time: 0.0038
+[ENGMONITOR INFO]: [LUA]: loading	rectangle
+[ENGMONITOR INFO]: Scripts loading time: 0.0090
 [ENGMONITOR INFO]: Module loaded
 [ENGMONITOR INFO]: Initializing modules...
 [ENGMONITOR INFO]: Modules initialization done
